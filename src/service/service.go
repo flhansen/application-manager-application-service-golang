@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -34,7 +33,8 @@ func NewApiResponse(status int, message string) string {
 	return string(jsonObj)
 }
 
-func ApiResponse(w io.Writer, message string, code int) {
+func ApiResponse(w http.ResponseWriter, message string, code int) {
+	w.WriteHeader(code)
 	fmt.Fprint(w, NewApiResponse(code, message))
 }
 
