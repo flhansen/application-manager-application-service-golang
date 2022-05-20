@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -14,7 +15,7 @@ type JwtConfig struct {
 
 type ApplicationServiceConfig struct {
 	Host string
-	Port string
+	Port int
 	Jwt  JwtConfig
 }
 
@@ -31,6 +32,10 @@ func NewApiResponse(status int, message string) string {
 
 	jsonObj, _ := json.Marshal(response)
 	return string(jsonObj)
+}
+
+func ApiResponse(w io.Writer, message string, code int) {
+	fmt.Fprint(w, NewApiResponse(code, message))
 }
 
 func NewService(config ApplicationServiceConfig) ApplicationService {
@@ -55,10 +60,6 @@ func NewService(config ApplicationServiceConfig) ApplicationService {
 	return s
 }
 
-func ApiResponse(w http.ResponseWriter, message string, code int) {
-	fmt.Fprint(w, NewApiResponse(code, message))
-}
-
 func (s ApplicationService) Start() error {
-	return http.ListenAndServe(fmt.Sprintf("%s:%s", s.Config.Host, s.Config.Port), s.Router)
+	return http.ListenAndServe(fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port), s.Router)
 }
