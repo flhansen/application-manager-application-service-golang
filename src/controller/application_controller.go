@@ -75,8 +75,7 @@ func (c ApplicationController) CreateScheme() {
 	}
 
 	for _, query := range queries {
-		rows, _ := c.Database.Query(c.Context, query)
-		defer rows.Close()
+		c.Database.Exec(c.Context, query)
 	}
 }
 
