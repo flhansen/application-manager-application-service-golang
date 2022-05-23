@@ -3,11 +3,13 @@ package controller
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 var controller ApplicationController
+var testApplication Application
 
 func TestMain(m *testing.M) {
 	os.Exit(runAllTests(m))
@@ -21,6 +23,19 @@ func runAllTests(m *testing.M) int {
 		Password: "test",
 		Database: "test",
 	})
+
+	testApplication = Application{
+		UserId:         1,
+		JobTitle:       "test job",
+		WorkTypeId:     1,
+		CompanyName:    "test company",
+		SubmissionDate: time.Now(),
+		StatusId:       1,
+		WantedSalary:   0,
+		AcceptedSalary: 0,
+		StartDate:      time.Now(),
+		Commentary:     "empty",
+	}
 
 	return m.Run()
 }
@@ -108,4 +123,60 @@ func TestGetApplicationsError(t *testing.T) {
 
 	assert.Nil(t, applications)
 	assert.NotNil(t, err)
+}
+
+func TestGetApplication(t *testing.T) {
+	controller.CreateScheme()
+
+	id, err := controller.InsertApplication(testApplication)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	application, err := controller.GetApplication(id)
+
+	assert.Nil(t, err)
+	assert.Equal(t, testApplication.UserId, application.UserId)
+	assert.Equal(t, testApplication.JobTitle, application.JobTitle)
+	assert.Equal(t, testApplication.CompanyName, application.CompanyName)
+}
+
+func TestGetApplicationDoesNotExist(t *testing.T) {
+	controller.CreateScheme()
+	_, err := controller.GetApplication(1)
+
+	assert.NotNil(t, err)
+}
+
+func TestDeleteApplication(t *testing.T) {
+	controller.CreateScheme()
+
+	id, err := controller.InsertApplication(testApplication)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	controller.DeleteApplication(id)
+	_, err = controller.GetApplication(id)
+
+	assert.NotNil(t, err)
+}
+
+func TestUpdateApplication(t *testing.T) {
+	controller.CreateScheme()
+
+	id, err := controller.InsertApplication(testApplication)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	updatedApplication := testApplication
+	updatedApplication.Id = id
+	updatedApplication.JobTitle = "another job title"
+	controller.UpdateApplication(updatedApplication)
+
+	application, err := controller.GetApplication(id)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "another job title", application.JobTitle)
 }

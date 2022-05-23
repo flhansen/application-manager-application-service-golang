@@ -111,3 +111,40 @@ func (c ApplicationController) GetApplications(userId int) ([]Application, error
 
 	return applications, nil
 }
+
+func (c ApplicationController) GetApplication(id int) (Application, error) {
+	row := c.Database.QueryRow(c.Context, "SELECT * FROM application WHERE id = $1", id)
+
+	var application Application
+	if err := row.Scan(
+		&application.Id, &application.UserId, &application.JobTitle, &application.WorkTypeId, &application.CompanyName,
+		&application.SubmissionDate, &application.StatusId, &application.WantedSalary, &application.AcceptedSalary,
+		&application.StartDate, &application.Commentary); err != nil {
+		return Application{}, err
+	}
+
+	return application, nil
+}
+
+func (c ApplicationController) DeleteApplication(id int) {
+	c.Database.QueryRow(c.Context, "DELETE FROM application WHERE id = $1", id)
+}
+
+func (c ApplicationController) UpdateApplication(application Application) {
+	c.Database.QueryRow(c.Context,
+		`UPDATE application
+		 SET user_id = $2,
+		     job_title = $3,
+			 work_type_id = $4,
+			 company_name = $5,
+			 submission_date = $6,
+			 status_id = $7,
+			 wanted_salary = $8,
+			 accepted_salary = $9,
+			 start_date = $10,
+			 commentary = $11
+		WHERE id = $1`, application.Id, application.UserId, application.JobTitle, application.WorkTypeId,
+		application.CompanyName, application.SubmissionDate, application.StatusId,
+		application.WantedSalary, application.AcceptedSalary, application.StartDate,
+		application.Commentary)
+}
