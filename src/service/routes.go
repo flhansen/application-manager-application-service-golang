@@ -1,6 +1,8 @@
 package service
 
 import (
+	"encoding/json"
+	"flhansen/application-manager/application-service/src/controller"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -43,8 +45,26 @@ func (s ApplicationService) handleGetApplication(w http.ResponseWriter, r *http.
 	}))
 }
 
-func handleCreateApplication(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+func (s ApplicationService) handleCreateApplication(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	var applicationRequest controller.Application
+	if err := json.NewDecoder(r.Body).Decode(&applicationRequest); err != nil {
+		ApiResponse(w, "Could not create application", http.StatusInternalServerError)
+		return
+	}
 
+	// Make sure that the application is assigned to the requesting user.
+	applicationRequest.UserId, _ = strconv.Atoi(p.ByName("userId"))
+
+	id, err := s.ApplicationController.InsertApplication(applicationRequest)
+	if err != nil {
+		ApiResponse(w, "Could not create application", http.StatusInternalServerError)
+		return
+	}
+
+	newApplication, _ := s.ApplicationController.GetApplication(id)
+	fmt.Fprint(w, NewApiResponseObject(http.StatusOK, "Application created", map[string]interface{}{
+		"application": newApplication,
+	}))
 }
 
 func handleDeleteApplication(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
