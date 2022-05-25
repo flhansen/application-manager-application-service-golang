@@ -76,7 +76,7 @@ func NewService(config ApplicationServiceConfig) (ApplicationService, error) {
 
 	// Endpoint: Applications
 	s.Router.GET("/api/applications", mw.Authenticated(s.handleGetApplications))
-	s.Router.GET("/api/applications/:id", mw.Authenticated(handleGetApplication))
+	s.Router.GET("/api/applications/:id", mw.Authenticated(s.handleGetApplication))
 	s.Router.POST("/api/applications", mw.Authenticated(handleCreateApplication))
 	s.Router.DELETE("/api/applications/:id", mw.Authenticated(handleDeleteApplication))
 	s.Router.PUT("/api/applications/:id", mw.Authenticated(handleUpdateApplication))

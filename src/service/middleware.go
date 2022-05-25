@@ -31,8 +31,8 @@ func (mw AuthMiddleware) Authenticated(handle httprouter.Handle) httprouter.Hand
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
-		r.Header.Add("username", claims["username"].(string))
-		r.Header.Add("userId", strconv.Itoa(int(claims["userId"].(float64))))
+		p = append(p, httprouter.Param{Key: "username", Value: claims["username"].(string)})
+		p = append(p, httprouter.Param{Key: "userId", Value: strconv.Itoa(int(claims["userId"].(float64)))})
 		handle(w, r, p)
 	}
 }
