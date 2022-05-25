@@ -63,8 +63,8 @@ func TestNewApplicationController(t *testing.T) {
 		Database: "test",
 	})
 
-	assert.NotNil(t, controller)
 	assert.Nil(t, err)
+	assert.NotNil(t, controller)
 }
 
 func TestCreateScheme(t *testing.T) {
