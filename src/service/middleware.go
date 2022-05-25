@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/julienschmidt/httprouter"
@@ -31,6 +32,7 @@ func (mw AuthMiddleware) Authenticated(handle httprouter.Handle) httprouter.Hand
 
 		claims := token.Claims.(jwt.MapClaims)
 		r.Header.Add("username", claims["username"].(string))
+		r.Header.Add("userId", strconv.Itoa(int(claims["userId"].(float64))))
 		handle(w, r, p)
 	}
 }

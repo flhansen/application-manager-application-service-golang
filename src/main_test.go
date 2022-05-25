@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flhansen/application-manager/application-service/src/controller"
 	"flhansen/application-manager/application-service/src/service"
 	"io/ioutil"
 	"os"
@@ -23,6 +24,13 @@ func TestRunApplication(t *testing.T) {
 		Port: 8000,
 		Jwt: service.JwtConfig{
 			SignKey: "supersecretsignkey",
+		},
+		Database: controller.DbConfig{
+			Host:     "localhost",
+			Port:     5432,
+			Username: "test",
+			Password: "test",
+			Database: "test",
 		},
 	}
 
@@ -49,7 +57,7 @@ func TestRunApplication(t *testing.T) {
 	case <-time.After(200 * time.Millisecond):
 		return
 	case exitCode := <-done:
-		t.Fatalf("The application terminated with %d\n", exitCode)
+		t.Fatalf("The application terminated with code %d\n", exitCode)
 	}
 }
 
@@ -105,6 +113,54 @@ func TestRunApplicationInvalidConfig(t *testing.T) {
 	}
 }
 
+func TestRunApplicationNewServiceError(t *testing.T) {
+	oldArgs := os.Args
+	defer func() {
+		os.Args = oldArgs
+	}()
+
+	config := service.ApplicationServiceConfig{
+		Host: "localhost",
+		Port: 8000,
+		Jwt: service.JwtConfig{
+			SignKey: "supersecretsignkey",
+		},
+		Database: controller.DbConfig{
+			Host:     "localhost",
+			Port:     -1,
+			Username: "test",
+			Password: "test",
+			Database: "test",
+		},
+	}
+
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	configFileName := filepath.Join(os.TempDir(), "test_config.yml")
+	if err := ioutil.WriteFile(configFileName, data, 0777); err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.Remove(configFileName)
+
+	os.Args[1] = configFileName
+
+	done := make(chan int)
+	go func() {
+		done <- runApplication()
+	}()
+
+	select {
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("The application should not run with invalid configuration\n")
+	case exitCode := <-done:
+		assert.Equal(t, 1, exitCode)
+	}
+}
+
 func TestRunApplicationStartError(t *testing.T) {
 	oldArgs := os.Args
 	defer func() {
@@ -116,6 +172,13 @@ func TestRunApplicationStartError(t *testing.T) {
 		Port: -1,
 		Jwt: service.JwtConfig{
 			SignKey: "supersecretsignkey",
+		},
+		Database: controller.DbConfig{
+			Host:     "localhost",
+			Port:     5432,
+			Username: "test",
+			Password: "test",
+			Database: "test",
 		},
 	}
 

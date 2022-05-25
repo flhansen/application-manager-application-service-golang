@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"flhansen/application-manager/application-service/src/controller"
 	"net/http"
 	"testing"
 	"time"
@@ -17,19 +18,33 @@ func TestNewApiResponse(t *testing.T) {
 	var res map[string]interface{}
 	err := json.Unmarshal([]byte(response), &res)
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	assert.Nil(t, err)
 	assert.NotNil(t, res["status"])
 	assert.NotNil(t, res["message"])
 	assert.Equal(t, 200.0, res["status"])
 	assert.Equal(t, "Hello, it's a test.", res["message"])
 }
 
+func TestNewApiResponseObject(t *testing.T) {
+	response := NewApiResponseObject(200, "Hello, it's a test.", map[string]interface{}{
+		"foo": "bar",
+	})
+
+	var res map[string]interface{}
+	err := json.Unmarshal([]byte(response), &res)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, res["status"])
+	assert.NotNil(t, res["message"])
+	assert.NotNil(t, res["foo"])
+	assert.Equal(t, 200.0, res["status"])
+	assert.Equal(t, "Hello, it's a test.", res["message"])
+	assert.Equal(t, "bar", res["foo"])
+}
+
 func TestApiResponse(t *testing.T) {
 	r := httprouter.New()
-	srv := http.Server{Addr: "localhost:8000", Handler: r}
+	srv := http.Server{Addr: "localhost:8080", Handler: r}
 
 	defer srv.Shutdown(context.Background())
 
@@ -44,7 +59,7 @@ func TestApiResponse(t *testing.T) {
 
 	select {
 	case <-time.After(500 * time.Millisecond):
-		res, err := http.Get("http://localhost:8000/test")
+		res, err := http.Get("http://localhost:8080/test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,25 +81,44 @@ func TestApiResponse(t *testing.T) {
 }
 
 func TestNewService(t *testing.T) {
-	s := NewService(ApplicationServiceConfig{
+	s, err := NewService(ApplicationServiceConfig{
 		Host: "localhost",
 		Port: 8080,
 		Jwt: JwtConfig{
 			SignKey: "supersecretsignkey",
 		},
+		Database: controller.DbConfig{
+			Host:     "localhost",
+			Port:     5432,
+			Username: "test",
+			Password: "test",
+			Database: "test",
+		},
 	})
 
+	assert.Nil(t, err)
 	assert.NotNil(t, s)
 }
 
 func TestServiceStart(t *testing.T) {
-	s := NewService(ApplicationServiceConfig{
+	s, err := NewService(ApplicationServiceConfig{
 		Host: "localhost",
 		Port: 8080,
 		Jwt: JwtConfig{
 			SignKey: "supersecretsignkey",
 		},
+		Database: controller.DbConfig{
+			Host:     "localhost",
+			Port:     5432,
+			Username: "test",
+			Password: "test",
+			Database: "test",
+		},
 	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	done := make(chan error, 1)
 	go func() {
@@ -97,4 +131,24 @@ func TestServiceStart(t *testing.T) {
 	case err := <-done:
 		t.Fatal(err)
 	}
+}
+
+func TestServiceStartAppControllerError(t *testing.T) {
+	s, err := NewService(ApplicationServiceConfig{
+		Host: "localhost",
+		Port: 8080,
+		Jwt: JwtConfig{
+			SignKey: "supersecretsignkey",
+		},
+		Database: controller.DbConfig{
+			Host:     "localhost",
+			Port:     -1,
+			Username: "test",
+			Password: "test",
+			Database: "test",
+		},
+	})
+
+	assert.Nil(t, s.ApplicationController)
+	assert.NotNil(t, err)
 }

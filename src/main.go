@@ -29,7 +29,12 @@ func runApplication() int {
 		return 1
 	}
 
-	s := service.NewService(serviceConfig)
+	s, err := service.NewService(serviceConfig)
+	if err != nil {
+		fmt.Printf("An error occured while creating the service: %v\n", err)
+		return 1
+	}
+
 	if err := s.Start(); err != nil {
 		fmt.Printf("An error occured while starting the service: %v\n", err)
 		return 1
