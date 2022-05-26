@@ -24,6 +24,7 @@ type ApplicationService struct {
 	Config                ApplicationServiceConfig
 	Router                *httprouter.Router
 	ApplicationController *controller.ApplicationController
+	TypesController       *controller.TypesController
 }
 
 func NewApiResponse(status int, message string) string {
@@ -61,7 +62,8 @@ func ApiResponse(w http.ResponseWriter, message string, code int) {
 }
 
 func NewService(config ApplicationServiceConfig) (ApplicationService, error) {
-	ac, err := controller.NewApplicationController(config.Database)
+	ac, _ := controller.NewApplicationController(config.Database)
+	tc, err := controller.NewTypesController(config.Database)
 	if err != nil {
 		return ApplicationService{}, err
 	}
@@ -70,6 +72,7 @@ func NewService(config ApplicationServiceConfig) (ApplicationService, error) {
 		Config:                config,
 		Router:                httprouter.New(),
 		ApplicationController: &ac,
+		TypesController:       &tc,
 	}
 
 	mw := AuthMiddleware{SignKey: s.Config.Jwt.SignKey}
@@ -78,12 +81,12 @@ func NewService(config ApplicationServiceConfig) (ApplicationService, error) {
 	s.Router.GET("/api/applications", mw.Authenticated(s.handleGetApplications))
 	s.Router.GET("/api/applications/:id", mw.Authenticated(s.handleGetApplication))
 	s.Router.POST("/api/applications", mw.Authenticated(s.handleCreateApplication))
-	s.Router.DELETE("/api/applications/:id", mw.Authenticated(handleDeleteApplication))
-	s.Router.PUT("/api/applications/:id", mw.Authenticated(handleUpdateApplication))
+	s.Router.DELETE("/api/applications/:id", mw.Authenticated(s.handleDeleteApplication))
+	s.Router.PUT("/api/applications", mw.Authenticated(s.handleUpdateApplication))
 
 	// Endpoint: Types
-	s.Router.GET("/api/types/worktypes", handleGetWorkTypes)
-	s.Router.GET("/api/types/statuses", handleGetStatuses)
+	s.Router.GET("/api/types/worktypes", s.handleGetWorkTypes)
+	s.Router.GET("/api/types/statuses", s.handleGetStatuses)
 
 	return s, nil
 }
