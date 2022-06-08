@@ -1,10 +1,13 @@
 package main
 
 import (
+	"flag"
+	"flhansen/application-manager/application-service/src/controller"
 	"flhansen/application-manager/application-service/src/service"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,19 +17,33 @@ func main() {
 }
 
 func runApplication() int {
-	args := os.Args[1:]
-	configPath := args[0]
-
-	fileContent, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		fmt.Printf("An error occured while reading the configuration file %s: %v\n", configPath, err)
-		return 1
-	}
+	configPath := flag.String("config", "", "Path to configuration file")
+	flag.Parse()
 
 	var serviceConfig service.ApplicationServiceConfig
-	if err := yaml.Unmarshal(fileContent, &serviceConfig); err != nil {
-		fmt.Printf("An error occured while unmarshalling the configuration file content: %v\n", err)
-		return 1
+
+	if *configPath != "" {
+		fileContent, err := ioutil.ReadFile(*configPath)
+		if err != nil {
+			fmt.Printf("An error occured while reading the configuration file %s: %v\n", *configPath, err)
+			return 1
+		}
+
+		if err := yaml.Unmarshal(fileContent, &serviceConfig); err != nil {
+			fmt.Printf("An error occured while unmarshalling the configuration file content: %v\n", err)
+			return 1
+		}
+	} else {
+		serviceConfig.Host = os.Getenv("APPMAN_HOST")
+		serviceConfig.Port, _ = strconv.Atoi(os.Getenv("APPMAN_PORT"))
+		serviceConfig.Jwt = service.JwtConfig{}
+		serviceConfig.Jwt.SignKey = []byte(os.Getenv("APPMAN_JWT_SIGNKEY"))
+		serviceConfig.Database = controller.DbConfig{}
+		serviceConfig.Database.Host = os.Getenv("APPMAN_DATABASE_HOST")
+		serviceConfig.Database.Port, _ = strconv.Atoi(os.Getenv("APPMAN_DATABASE_PORT"))
+		serviceConfig.Database.Username = os.Getenv("APPMAN_DATABASE_USERNAME")
+		serviceConfig.Database.Password = os.Getenv("APPMAN_DATABASE_PASSWORD")
+		serviceConfig.Database.Database = os.Getenv("APPMAN_DATABASE_NAME")
 	}
 
 	s, err := service.NewService(serviceConfig)

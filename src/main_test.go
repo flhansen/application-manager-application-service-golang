@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"flhansen/application-manager/application-service/src/controller"
 	"flhansen/application-manager/application-service/src/service"
 	"io/ioutil"
@@ -12,6 +13,30 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
+
+func setTestEnv(envs map[string]string) func() {
+	oldEnvs := map[string]string{}
+
+	for name, value := range envs {
+		if oldValue, ok := os.LookupEnv(name); ok {
+			oldEnvs[name] = oldValue
+		}
+
+		os.Setenv(name, value)
+	}
+
+	return func() {
+		for name := range envs {
+			oldValue, ok := oldEnvs[name]
+
+			if ok {
+				os.Setenv(name, oldValue)
+			} else {
+				os.Unsetenv(name)
+			}
+		}
+	}
+}
 
 func TestRunApplication(t *testing.T) {
 	oldArgs := os.Args
@@ -46,10 +71,44 @@ func TestRunApplication(t *testing.T) {
 
 	defer os.Remove(configFileName)
 
-	os.Args[1] = configFileName
+	done := make(chan int)
+	go func() {
+		flag.CommandLine = flag.NewFlagSet("flags set", flag.ExitOnError)
+		os.Args = append([]string{"flags set"}, "-config", configFileName)
+		done <- runApplication()
+	}()
+
+	select {
+	case <-time.After(200 * time.Millisecond):
+		return
+	case exitCode := <-done:
+		t.Fatalf("The application terminated with code %d\n", exitCode)
+	}
+}
+
+func TestRunApplicationUsingEnv(t *testing.T) {
+	oldArgs := os.Args
+	defer func() {
+		os.Args = oldArgs
+	}()
+
+	testEnvCloser := setTestEnv(map[string]string{
+		"APPMAN_HOST":              "localhost",
+		"APPMAN_PORT":              "8080",
+		"APPMAN_JWT_SIGNKEY":       "secret",
+		"APPMAN_DATABASE_HOST":     "localhost",
+		"APPMAN_DATABASE_PORT":     "5432",
+		"APPMAN_DATABASE_USERNAME": "test",
+		"APPMAN_DATABASE_PASSWORD": "test",
+		"APPMAN_DATABASE_NAME":     "test",
+	})
+
+	t.Cleanup(testEnvCloser)
 
 	done := make(chan int)
 	go func() {
+		flag.CommandLine = flag.NewFlagSet("flags set", flag.ExitOnError)
+		os.Args = []string{"flags set"}
 		done <- runApplication()
 	}()
 
@@ -68,10 +127,11 @@ func TestRunApplicationNoSuchFile(t *testing.T) {
 	}()
 
 	configFileName := filepath.Join(os.TempDir(), "test_config.yml")
-	os.Args[1] = configFileName
 
 	done := make(chan int)
 	go func() {
+		flag.CommandLine = flag.NewFlagSet("flags set", flag.ExitOnError)
+		os.Args = append([]string{"flags set"}, "-config", configFileName)
 		done <- runApplication()
 	}()
 
@@ -98,10 +158,10 @@ func TestRunApplicationInvalidConfig(t *testing.T) {
 
 	defer os.Remove(configFileName)
 
-	os.Args[1] = configFileName
-
 	done := make(chan int)
 	go func() {
+		flag.CommandLine = flag.NewFlagSet("flags set", flag.ExitOnError)
+		os.Args = append([]string{"flags set"}, "-config="+configFileName)
 		done <- runApplication()
 	}()
 
@@ -146,10 +206,10 @@ func TestRunApplicationNewServiceError(t *testing.T) {
 
 	defer os.Remove(configFileName)
 
-	os.Args[1] = configFileName
-
 	done := make(chan int)
 	go func() {
+		flag.CommandLine = flag.NewFlagSet("flags set", flag.ExitOnError)
+		os.Args = append([]string{"flags set"}, "-config", configFileName)
 		done <- runApplication()
 	}()
 
@@ -194,10 +254,10 @@ func TestRunApplicationStartError(t *testing.T) {
 
 	defer os.Remove(configFileName)
 
-	os.Args[1] = configFileName
-
 	done := make(chan int)
 	go func() {
+		flag.CommandLine = flag.NewFlagSet("flag set", flag.ExitOnError)
+		os.Args = append([]string{"flags set"}, "-config", configFileName)
 		done <- runApplication()
 	}()
 
